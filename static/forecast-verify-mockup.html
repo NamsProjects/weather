@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Forecast Verification — Mockup</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      color: #64748b;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .control-group label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+    }
+
+    select, input[type="date"] {
+      background: #1e2330;
+      border: 1px solid #2d3748;
+      color: #e2e8f0;
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    select:focus, input:focus {
+      outline: none;
+      border-color: #4f8ef7;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .chart-card {
+      background: #161b27;
+      border: 1px solid #1e2a3a;
+      border-radius: 10px;
+      padding: 16px 20px;
+    }
+
+    .chart-card h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 240px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .legend-dot {
+      width: 20px;
+      height: 3px;
+      border-radius: 2px;
+    }
+
+    .legend-dot.actual {
+      height: 3px;
+      background: #f8fafc;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: #161b27;
+      border: 1px solid #1e2a3a;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .stat-card .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #475569;
+      margin-bottom: 6px;
+    }
+
+    .stat-card .value {
+      font-size: 22px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .stat-card .sub {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .stat-card .value.good { color: #34d399; }
+    .stat-card .value.warn { color: #fbbf24; }
+    .stat-card .value.bad  { color: #f87171; }
+
+    .table-card {
+      background: #161b27;
+      border: 1px solid #1e2a3a;
+      border-radius: 10px;
+      padding: 16px 20px;
+    }
+
+    .table-card h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #475569;
+      padding: 6px 10px;
+      border-bottom: 1px solid #1e2a3a;
+    }
+
+    td {
+      padding: 9px 10px;
+      font-size: 13px;
+      border-bottom: 1px solid #1a2235;
+      color: #cbd5e1;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    .run-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .run-swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .error-bar {
+      display: inline-block;
+      height: 6px;
+      border-radius: 3px;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .pill.good { background: #064e3b; color: #34d399; }
+    .pill.warn { background: #451a03; color: #fbbf24; }
+    .pill.bad  { background: #450a0a; color: #f87171; }
+
+    .note {
+      font-size: 11px;
+      color: #334155;
+      margin-top: 16px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Forecast Verification</h1>
+<p class="subtitle">Compare archived model forecasts against what actually occurred</p>
+
+<div class="controls">
+  <div class="control-group">
+    <label>City</label>
+    <select>
+      <option>New York City</option>
+      <option>Chicago</option>
+      <option>Los Angeles</option>
+      <option>Austin</option>
+    </select>
+  </div>
+  <div class="control-group">
+    <label>Date</label>
+    <input type="date" value="2026-05-13">
+  </div>
+  <div class="control-group">
+    <label>Model</label>
+    <select>
+      <option>HRRR</option>
+      <option>GFS</option>
+      <option>Both</option>
+    </select>
+  </div>
+</div>
+
+<!-- stat cards -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="label">Best Cloud Forecast</div>
+    <div class="value good">HRRR 12z</div>
+    <div class="sub">±8% avg error</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Best Wind Forecast</div>
+    <div class="value good">HRRR 18z</div>
+    <div class="sub">±1.4 mph avg error</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Cloud Peak (Actual)</div>
+    <div class="value">78%</div>
+    <div class="sub">at 2pm local</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Wind Peak (Actual)</div>
+    <div class="value">19 mph</div>
+    <div class="sub">at 11am local</div>
+  </div>
+</div>
+
+<!-- charts -->
+<div class="charts-grid">
+  <!-- Cloud Coverage -->
+  <div class="chart-card">
+    <h2>Cloud Coverage</h2>
+    <div class="chart-wrap">
+      <canvas id="cloudChart"></canvas>
+    </div>
+    <div class="legend" id="cloudLegend"></div>
+  </div>
+
+  <!-- Wind Speed -->
+  <div class="chart-card">
+    <h2>Wind Speed (mph)</h2>
+    <div class="chart-wrap">
+      <canvas id="windChart"></canvas>
+    </div>
+    <div class="legend" id="windLegend"></div>
+  </div>
+</div>
+
+<!-- forecast run table -->
+<div class="table-card">
+  <h2>Forecast Run Accuracy — May 13</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Run</th>
+        <th>Issued</th>
+        <th>Lead Time</th>
+        <th>Cloud MAE</th>
+        <th>Wind MAE</th>
+        <th>Rating</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<p class="note">Mockup — forecast data from Open-Meteo archived runs · actual wind from Wethr METAR observations · actual cloud from HRRR F00 analysis</p>
+
+<script>
+const HOURS = Array.from({length: 24}, (_, i) => `${String(i).padStart(2,'0')}:00`);
+
+// ── Mock data ────────────────────────────────────────────────────────────────
+
+const actualCloud = [18,14,10,12,22,34,44,52,58,65,70,74,78,74,68,60,52,44,36,30,24,20,16,12];
+const actualWind  = [7, 6, 5, 6, 8,10,12,14,16,18,19,19,18,17,16,14,13,12,11,10, 9, 8, 7, 6];
+
+const runs = [
+  {
+    label: 'HRRR 00z (−36h)',
+    color: '#3b4f7a',
+    cloud: actualCloud.map(v => Math.round(v + (Math.random()-0.4)*28)),
+    wind:  actualWind.map(v  => +(v  + (Math.random()-0.4)*5).toFixed(1)),
+    issued: 'May 12 · 00z',
+    lead: '~36h',
+    cloudMAE: 18.4,
+    windMAE: 3.2,
+    rating: 'bad',
+  },
+  {
+    label: 'GFS 06z (−30h)',
+    color: '#4a5c8a',
+    cloud: actualCloud.map(v => Math.round(v + (Math.random()-0.35)*22)),
+    wind:  actualWind.map(v  => +(v  + (Math.random()-0.35)*4).toFixed(1)),
+    issued: 'May 12 · 06z',
+    lead: '~30h',
+    cloudMAE: 14.1,
+    windMAE: 2.8,
+    rating: 'warn',
+  },
+  {
+    label: 'HRRR 12z (−24h)',
+    color: '#5b72b0',
+    cloud: actualCloud.map(v => Math.round(v + (Math.random()-0.3)*16)),
+    wind:  actualWind.map(v  => +(v  + (Math.random()-0.3)*3).toFixed(1)),
+    issued: 'May 12 · 12z',
+    lead: '~24h',
+    cloudMAE: 8.2,
+    windMAE: 2.1,
+    rating: 'good',
+  },
+  {
+    label: 'HRRR 18z (−18h)',
+    color: '#7a9cd4',
+    cloud: actualCloud.map(v => Math.round(v + (Math.random()-0.25)*10)),
+    wind:  actualWind.map(v  => +(v  + (Math.random()-0.25)*2).toFixed(1)),
+    issued: 'May 12 · 18z',
+    lead: '~18h',
+    cloudMAE: 6.7,
+    windMAE: 1.4,
+    rating: 'good',
+  },
+];
+
+// clamp values
+runs.forEach(r => {
+  r.cloud = r.cloud.map(v => Math.min(100, Math.max(0, v)));
+  r.wind  = r.wind.map(v  => Math.max(0, v));
+});
+
+const actualColor = '#f8fafc';
+
+// ── Chart factory ────────────────────────────────────────────────────────────
+
+function makeChart(id, datasets, yLabel, yMax) {
+  const ctx = document.getElementById(id).getContext('2d');
+  return new Chart(ctx, {
+    type: 'line',
+    data: { labels: HOURS, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e2330',
+          borderColor: '#2d3748',
+          borderWidth: 1,
+          titleColor: '#94a3b8',
+          bodyColor: '#e2e8f0',
+          padding: 10,
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#475569',
+            font: { size: 10 },
+            maxTicksLimit: 8,
+          },
+          grid: { color: '#1a2235' },
+        },
+        y: {
+          min: 0,
+          max: yMax,
+          ticks: { color: '#475569', font: { size: 10 } },
+          grid: { color: '#1a2235' },
+          title: {
+            display: true,
+            text: yLabel,
+            color: '#475569',
+            font: { size: 10 },
+          },
+        },
+      },
+    },
+  });
+}
+
+// ── Build datasets ────────────────────────────────────────────────────────────
+
+function buildDatasets(key, actualData) {
+  const ds = runs.map(r => ({
+    label: r.label,
+    data: r[key],
+    borderColor: r.color,
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    pointRadius: 0,
+    tension: 0.35,
+    borderDash: [4, 3],
+  }));
+
+  ds.push({
+    label: 'Actual',
+    data: actualData,
+    borderColor: actualColor,
+    backgroundColor: 'transparent',
+    borderWidth: 2.5,
+    pointRadius: 0,
+    tension: 0.35,
+  });
+
+  return ds;
+}
+
+makeChart('cloudChart', buildDatasets('cloud', actualCloud), '%', 110);
+makeChart('windChart',  buildDatasets('wind',  actualWind),  'mph', 28);
+
+// ── Legends ───────────────────────────────────────────────────────────────────
+
+function buildLegend(containerId) {
+  const el = document.getElementById(containerId);
+  runs.forEach(r => {
+    el.innerHTML += `
+      <div class="legend-item">
+        <div class="legend-dot" style="background:${r.color}; border: 1px dashed ${r.color}"></div>
+        ${r.label}
+      </div>`;
+  });
+  el.innerHTML += `
+    <div class="legend-item">
+      <div class="legend-dot actual"></div>
+      Actual
+    </div>`;
+}
+
+buildLegend('cloudLegend');
+buildLegend('windLegend');
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+
+const tbody = document.getElementById('tableBody');
+runs.forEach(r => {
+  const maxCloudErr = 20, maxWindErr = 4;
+  const cloudW = Math.min(100, (r.cloudMAE / maxCloudErr) * 100);
+  const windW  = Math.min(100, (r.windMAE  / maxWindErr)  * 100);
+  tbody.innerHTML += `
+    <tr>
+      <td>
+        <div class="run-badge">
+          <div class="run-swatch" style="background:${r.color}"></div>
+          ${r.label}
+        </div>
+      </td>
+      <td style="color:#64748b">${r.issued}</td>
+      <td style="color:#64748b">${r.lead}</td>
+      <td>
+        <div class="error-bar" style="width:${cloudW}%; background:${r.color}"></div>
+        ${r.cloudMAE}%
+      </td>
+      <td>
+        <div class="error-bar" style="width:${windW}%; background:${r.color}"></div>
+        ${r.windMAE} mph
+      </td>
+      <td><span class="pill ${r.rating}">${r.rating === 'good' ? '✓ Good' : r.rating === 'warn' ? '~ Fair' : '✗ Poor'}</span></td>
+    </tr>`;
+});
+</script>
+</body>
+</html>

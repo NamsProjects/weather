@@ -1,0 +1,22 @@
+# Secrets
+.env
+*.pem
+
+# Runtime data
+notes_data.json
+notes_web.json
+
+# Claude Code
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db

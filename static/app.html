@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NWS Weather Explorer</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>◈  NWS Weather Explorer</h1>
+  <span class="sub">National Weather Service · Historical Observations + Forecasts</span>
+</header>
+
+<div class="layout">
+
+  <!-- ══ Sidebar ══ -->
+  <aside>
+    <div class="sidebar-inner">
+
+      <div class="section-label">City</div>
+      <select id="city-select"></select>
+
+      <div class="sep"></div>
+
+      <div class="section-label">Date Range</div>
+      <label>Start</label>
+      <input type="datetime-local" id="start-input" />
+      <label style="margin-top:6px">End</label>
+      <input type="datetime-local" id="end-input" />
+
+      <div class="section-label" style="margin-top:8px">Presets</div>
+      <div class="presets">
+        <button class="preset-btn" data-p="today">Today</button>
+        <button class="preset-btn" data-p="yesterday">Yesterday</button>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="section-label">Options</div>
+
+      <div class="two-col" style="margin-bottom:6px">
+        <div>
+          <label>Units</label>
+          <div class="toggle-row">
+            <span class="toggle-lbl on" id="lbl-f">°F</span>
+            <div class="toggle-track" id="units-toggle">
+              <div class="toggle-knob"></div>
+            </div>
+            <span class="toggle-lbl" id="lbl-c">°C</span>
+          </div>
+        </div>
+        <div>
+          <label>Source</label>
+          <div class="toggle-row">
+            <span class="toggle-lbl on" id="lbl-nws">NWS</span>
+            <div class="toggle-track" id="source-toggle">
+              <div class="toggle-knob"></div>
+            </div>
+            <span class="toggle-lbl" id="lbl-iem">IEM</span>
+          </div>
+        </div>
+      </div>
+
+      <label>Interval</label>
+      <select id="interval-select" style="margin-bottom:6px">
+        <option value="hourly">Hourly</option>
+        <option value="30min">30 min</option>
+      </select>
+
+      <label>Duration tolerance (°)</label>
+      <input type="number" id="tol-input" value="1.0" min="0" step="0.5" />
+
+      <label class="check-row" style="margin-top:8px">
+        <input type="checkbox" id="forecast-enable" checked />
+        <span>Show Forecasts</span>
+      </label>
+
+      <div class="sep"></div>
+
+      <div class="section-label">CLI Stats Filter</div>
+      <label class="check-row">
+        <input type="checkbox" id="cli-window-only" checked />
+        <span>CLI window only</span>
+      </label>
+
+      <div class="sep"></div>
+
+      <div class="section-label">Compare Overlay</div>
+      <label class="check-row" style="margin-bottom:6px">
+        <input type="checkbox" id="compare-enable" />
+        <span>Enable prior-period overlay</span>
+      </label>
+      <label>Offset</label>
+      <select id="compare-offset" style="margin-bottom:4px">
+        <option value="1">1 day prior</option>
+        <option value="2">2 days prior</option>
+        <option value="3">3 days prior</option>
+        <option value="7">7 days prior</option>
+      </select>
+      <div class="status-bar" id="compare-status"></div>
+
+      <div class="sep"></div>
+
+      <div class="section-label">NWS Forecast Versions</div>
+      <button class="ghost-btn" id="nws-ver-fetch-btn" style="width:100%;margin-bottom:4px">↻ Refresh Versions</button>
+      <div class="status-bar" id="nws-ver-status"></div>
+      <div id="nws-ver-list" style="display:none;margin-top:6px"></div>
+
+      <div class="sep"></div>
+
+      <button class="fetch-btn" id="fetch-btn">▶  Fetch Data</button>
+      <div class="status-bar" id="main-status">Select a city and date range, then click Fetch.</div>
+
+    </div>
+  </aside>
+
+  <!-- ══ Main ══ -->
+  <main>
+
+    <!-- Stat cards -->
+    <div class="cards">
+      <div class="card">
+        <div class="card-label">Station</div>
+        <div class="card-value" id="val-station">—</div>
+        <div class="card-sub"  id="sub-station"></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Records</div>
+        <div class="card-value" id="val-records">—</div>
+        <div class="card-sub"  id="sub-records"></div>
+      </div>
+      <div class="card min">
+        <div class="card-label" id="lbl-min">Min Temp</div>
+        <div class="card-value" id="val-min">—</div>
+        <div class="card-sub"  id="sub-min"></div>
+        <div class="card-dur"  id="dur-min"></div>
+      </div>
+      <div class="card max">
+        <div class="card-label" id="lbl-max">Max Temp</div>
+        <div class="card-value" id="val-max">—</div>
+        <div class="card-sub"  id="sub-max"></div>
+        <div class="card-dur"  id="dur-max"></div>
+      </div>
+    </div>
+
+    <!-- Forecast layer status strip -->
+    <div class="fc-strip" id="fc-strip"></div>
+
+    <!-- Persistent chart (always visible) -->
+    <div id="chart-section">
+      <div id="chart-city-title"></div>
+      <div id="temp-chart-wrap">
+        <canvas id="temp-chart"></canvas>
+        <div id="chart-placeholder">Fetch data to see chart</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="highres">High-Res</button>
+        <button class="tab-btn"        data-tab="kalshi">Kalshi Markets</button>
+        <button class="tab-btn"        data-tab="notes">Notes</button>
+        <button class="tab-btn"        data-tab="cli">CLI Report</button>
+        <button class="tab-btn"        data-tab="json">Raw JSON</button>
+      </div>
+
+      <!-- High-Res tab -->
+      <div class="tab-content" id="tab-highres">
+        <div class="hr-ctrl-bar">
+          <label class="hr-lbl">Station</label>
+          <input id="hr-station" type="text" class="hr-input" style="width:80px" placeholder="KNYC" />
+          <label class="hr-lbl">Start</label>
+          <input id="hr-start" type="text" class="hr-input" style="width:200px" placeholder="ISO datetime" />
+          <label class="hr-lbl">End</label>
+          <input id="hr-end" type="text" class="hr-input" style="width:200px" placeholder="ISO datetime" />
+          <label class="hr-radio-lbl"><input type="radio" name="hr-source" value="nws" checked /> NWS METAR</label>
+          <label class="hr-radio-lbl" style="color:var(--accent)"><input type="radio" name="hr-source" value="iem" /> IEM METAR</label>
+          <button class="hr-fetch-btn" id="hr-fetch-btn">⬇ Fetch Raw Obs</button>
+          <button class="hr-reset-btn" id="hr-reset-zoom" title="Reset zoom">⟳ Reset Zoom</button>
+        </div>
+        <div class="hr-status" id="hr-status">Auto-populates when data is loaded in the Chart tab.</div>
+        <div class="hr-stats-wrap">
+          <div id="wethr-live-row"></div>
+          <div class="hr-stats-row" id="hr-stats-row"></div>
+        </div>
+        <div class="hr-chart-wrap">
+          <canvas id="hr-chart"></canvas>
+          <div class="hr-placeholder" id="hr-placeholder">
+            NWS METAR — official NWS observations API, no resampling<br>
+            IEM METAR — IEM METAR+SPECI archive, more complete for CLI verification<br><br>
+            Select a source, then click ⬇ Fetch Raw Obs.<br>
+            Station and window auto-populate from the Chart tab.
+          </div>
+        </div>
+      </div>
+
+      <!-- Kalshi Markets tab -->
+      <div class="tab-content hidden" id="tab-kalshi">
+        <div id="kalshi-inner">
+          <div id="kalshi-status" style="font-size:10px;color:var(--muted);margin-bottom:8px">Load data to fetch Kalshi contracts.</div>
+          <div id="kalshi-summary"></div>
+          <div id="kalshi-panels">
+            <div id="kalshi-panel-high" class="kalshi-panel"></div>
+            <div id="kalshi-panel-low"  class="kalshi-panel"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- JSON tab -->
+      <div class="tab-content hidden" id="tab-json">
+        <textarea id="json-text" readonly>Run a query to see raw JSON here.</textarea>
+      </div>
+
+      <!-- CLI Report tab -->
+      <div class="tab-content hidden" id="tab-cli">
+        <div class="cli-top">
+          <span class="cli-top-title">Official NWS Daily Climatological Report (CLI)</span>
+          <span class="cli-city" id="cli-city"></span>
+        </div>
+        <div class="cli-picker-row">
+          <label>Report:</label>
+          <select id="cli-picker"><option>— fetch to populate —</option></select>
+          <button class="ghost-btn" id="cli-load-btn">Load</button>
+        </div>
+        <div class="cli-cards">
+          <div class="cli-card">
+            <div class="cli-card-label">High</div>
+            <div class="cli-card-value high" id="cli-high">—</div>
+          </div>
+          <div class="cli-card">
+            <div class="cli-card-label">Low</div>
+            <div class="cli-card-value low" id="cli-low">—</div>
+          </div>
+          <div class="cli-card">
+            <div class="cli-card-label">Precip (in)</div>
+            <div class="cli-card-value" id="cli-precip">—</div>
+          </div>
+          <div class="cli-card">
+            <div class="cli-card-label">Valid date</div>
+            <div class="cli-card-value" id="cli-date" style="font-size:13px">—</div>
+          </div>
+          <div class="cli-card">
+            <div class="cli-card-label">Issued</div>
+            <div class="cli-card-value" id="cli-issued" style="font-size:11px">—</div>
+          </div>
+        </div>
+        <div class="cli-dst-note">
+          ⚠  CLI uses Local Standard Time (LST). During DST the reporting window is
+          1:00 AM – 12:59 AM local the following day — not calendar midnight.
+        </div>
+        <div class="cli-status-lbl" id="cli-status">—</div>
+        <pre id="cli-raw">Fetch data to load the CLI report automatically.
+
+The picker above will be populated with all available reports (~7 days).
+Choose any date and click Load to view it.
+
+The CLI is the authoritative settlement source for Kalshi weather markets.</pre>
+      </div>
+
+      <!-- Notes tab -->
+      <div class="tab-content hidden" id="tab-notes">
+
+        <!-- Toolbar row 1 -->
+        <div class="nt-toolbar nt-toolbar-1">
+          <span class="nt-type-label">TYPE:</span>
+          <button class="nt-type-btn active" id="nt-type-high">HIGH</button>
+          <button class="nt-type-btn"        id="nt-type-low">LOW</button>
+          <div class="nt-toolbar-sep"></div>
+          <button class="nt-action-btn" id="nt-refresh-snap">&#9633; Refresh + Snap</button>
+          <button class="nt-action-btn" id="nt-snap-btn">&#9633; Snap</button>
+          <button class="nt-action-btn" id="nt-export-btn">&#9633; Export PNG</button>
+        </div>
+
+        <!-- Toolbar row 2 -->
+        <div class="nt-toolbar nt-toolbar-2">
+          <button class="nt-copy-btn" id="nt-copy-btn">&#9633; Copy note</button>
+          <span class="nt-city-label">CITY: <span id="nt-city-display" class="nt-city-val">—</span></span>
+        </div>
+
+        <!-- Split panel -->
+        <div class="nt-split">
+
+          <!-- Left: snapshot list -->
+          <div class="nt-snap-list" id="nt-snap-list">
+            <div class="nt-snap-list-hdr">SNAPSHOTS</div>
+          </div>
+
+          <!-- Right: detail view -->
+          <div class="nt-detail" id="nt-detail">
+            <div class="nt-detail-empty" id="nt-detail-empty">
+              No snapshot yet —<br>click <b>Refresh + Snap</b> or <b>Snap</b>
+            </div>
+          </div>
+
+        </div><!-- /nt-split -->
+
+        <!-- Footer -->
+        <div class="nt-footer">
+          <span class="nt-footer-saved" id="nt-footer-saved">&#9679; auto-saved</span>
+          <span id="nt-snap-count">0 snaps</span>
+          <span class="nt-footer-ver">notes v2</span>
+        </div>
+
+      </div>
+
+    </div><!-- /tabs -->
+
+  </main>
+</div>
+
+<script src="app-state.js"></script>
+<script src="app-controls.js"></script>
+<script src="app-cards.js"></script>
+<script src="app-chart.js"></script>
+<script src="app-cli.js"></script>
+<script src="app-fetch.js"></script>
+<script src="app-panels.js"></script>
+<script src="app-notes.js"></script>
+<script src="app-wethr.js"></script>
+</body>
+</html>
