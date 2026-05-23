@@ -2,7 +2,7 @@
 
 A Flask web app for cross-referencing multi-source weather forecasts against Kalshi prediction market contract prices to identify mispricings.
 
-![Main dashboard](static/screenshots/dashboard.png)
+![Main dashboard](static/screenshots/maindashboard.png)
 
 ## What it does
 
@@ -41,6 +41,8 @@ Snapshots save the full underlying data — all observed and forecast time serie
 Additional charts can be appended to an existing snapshot (e.g. after refreshing data or switching cities), so you can compare multiple states side by side within a single note.
 
 ### Notes
+![Notes panel](static/screenshots/notes.png)
+
 Each snapshot includes a free-form notes field for documenting your reasoning — why the market looked mispriced, what the forecasts were saying, any caveats. Notes auto-save as you type and persist across sessions.
 
 You can also append additional chart captures to an existing note at any time (e.g. after the day resolves and you want to record what actually happened), building a before/after record within a single snapshot.
