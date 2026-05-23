@@ -28,6 +28,8 @@ Pulls temperature data from 5 independent sources, overlays them on a single cha
 ### High-res mode
 Standard mode resamples observations to hourly intervals. High-res mode shows every raw METAR and SPECI report — useful when a temperature spike lasts less than an hour and would otherwise be smoothed out.
 
+High-res mode also plots the dew point alongside each observation. Since air temperature cannot fall below the dew point — condensation begins at that threshold and the latent heat release prevents further cooling — the dew point gives you a lower bound on how far the overnight low can realistically drop.
+
 ![High-res observation view](static/screenshots/highres.png)
 
 ### Kalshi contract panel
