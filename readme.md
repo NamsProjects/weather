@@ -8,7 +8,7 @@ A Flask web app for cross-referencing multi-source weather forecasts against Kal
 
 Pulls temperature data from 5 independent sources, overlays them on a single chart, and streams live Kalshi contract prices — so you can see at a glance whether the market is pricing a high or low that no forecast model supports.
 
-- **21 US cities** with per-city ASOS station mapping for accurate CLI settlement data
+- **20 US cities** with per-city ASOS station mapping for accurate CLI settlement data
 - **13 forecast sources**: NWS gridpoint, Open-Meteo HRRR→GFS, MOS (GFS-MOS + LAMP)
 - **Live Kalshi contract stream** via WebSocket — bid/ask spread updated in real time
 - **High-resolution mode** — raw METAR/SPECI observations without hourly resampling, so you see every condition-triggered report
@@ -98,4 +98,4 @@ Kalshi and wethr credentials are optional — the app runs without them, those p
 
 ## Cities supported
 
-21 US cities: New York City, Chicago, Los Angeles, Houston, Miami, Seattle, Denver, Boston, Atlanta, Phoenix, Dallas, Philadelphia, San Francisco, Minneapolis, Detroit, Las Vegas, Oklahoma City, Austin, Washington DC, San Antonio, New Orleans
+20 US cities: New York City, Chicago, Los Angeles, Houston, Miami, Seattle, Denver, Boston, Atlanta, Phoenix, Dallas, Philadelphia, San Francisco, Minneapolis, Las Vegas, Oklahoma City, Austin, Washington DC, San Antonio, New Orleans

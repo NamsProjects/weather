@@ -33,7 +33,6 @@ CITIES: dict[str, tuple[float, float, str]] = {
     "Philadelphia":   (39.952, -75.165,   "America/New_York"),
     "San Francisco":  (37.773, -122.432,  "America/Los_Angeles"),
     "Minneapolis":    (44.979, -93.265,   "America/Chicago"),
-    "Detroit":        (42.332, -83.046,   "America/Detroit"),
     "Las Vegas":      (36.0840, -115.1537, "America/Los_Angeles"),
     "Oklahoma City":  (35.3931,  -97.6011, "America/Chicago"),
     "Austin":         (30.1975,  -97.6664, "America/Chicago"),
@@ -57,7 +56,6 @@ CLI_LOCATIONS: dict[str, str] = {
     "Philadelphia":   "PHL",
     "San Francisco":  "SFO",
     "Minneapolis":    "MSP",
-    "Detroit":        "DTW",
     "Las Vegas":      "LAS",
     "Oklahoma City":  "OKC",
     "Austin":         "AUS",
@@ -90,7 +88,6 @@ CLI_STATION_COORDS: dict[str, tuple[float, float]] = {
     "Philadelphia":   (39.8721,  -75.2411),   # KPHL  Philadelphia Intl
     "San Francisco":  (37.6213, -122.3790),   # KSFO  San Francisco Intl
     "Minneapolis":    (44.8848,  -93.2223),   # KMSP  Minneapolis-St Paul Intl
-    "Detroit":        (42.2124,  -83.3534),   # KDTW  Detroit Metropolitan Wayne County
     "Las Vegas":      (36.0840, -115.1537),   # KLAS  Harry Reid Intl
     "Oklahoma City":  (35.3931,  -97.6011),   # KOKC  Will Rogers World
     "Austin":         (30.1975,  -97.6664),   # KAUS  Austin-Bergstrom Intl
@@ -118,7 +115,6 @@ CLI_STATION_IDS: dict[str, str] = {
     "Philadelphia":   "KPHL",   # Philadelphia Intl
     "San Francisco":  "KSFO",   # San Francisco Intl
     "Minneapolis":    "KMSP",   # Minneapolis-St Paul Intl
-    "Detroit":        "KDTW",   # Detroit Metropolitan Wayne County
     "Las Vegas":      "KLAS",   # Harry Reid Intl
     "Oklahoma City":  "KOKC",   # Will Rogers World
     "Austin":         "KAUS",   # Austin-Bergstrom Intl
