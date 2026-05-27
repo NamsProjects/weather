@@ -159,6 +159,28 @@ def fetch_mos(station_id: str, model: str = "GFS", units: str = "F") -> dict:
         key=lambda r: r["time"],
     )
 
+    # IEM doesn't always populate n_x, and sometimes only returns one type
+    # (e.g. all "low", no "high"). Either case leaves the panel showing "–".
+    # For any missing type, derive it from the hourly rows: group by UTC date,
+    # take the max row as "high" and min row as "low" for each day.
+    print(f"[MOS DEBUG] {model_up}/{station}: {len(rows)} rows, {len(n_x_vals)} n_x_vals raw: {n_x_vals[:6]}", file=sys.stderr, flush=True)
+    has_high = any(v["type"] == "high" for v in n_x_vals)
+    has_low  = any(v["type"] == "low"  for v in n_x_vals)
+    print(f"[MOS DEBUG] {model_up}/{station}: has_high={has_high} has_low={has_low}", file=sys.stderr, flush=True)
+    if rows and (not has_high or not has_low):
+        by_date: dict[str, list] = {}
+        for row in rows:
+            by_date.setdefault(row["time"][:10], []).append(row)
+        derived: list[dict] = []
+        for day_rows in by_date.values():
+            if not has_high:
+                max_row = max(day_rows, key=lambda r: r["temp"])
+                derived.append({"time": max_row["time"], "value": max_row["temp"], "type": "high"})
+            if not has_low:
+                min_row = min(day_rows, key=lambda r: r["temp"])
+                derived.append({"time": min_row["time"], "value": min_row["temp"], "type": "low"})
+        n_x_vals = sorted(n_x_vals + derived, key=lambda r: r["time"])
+
     return {
         "rows":     rows,
         "n_x_vals": n_x_vals,

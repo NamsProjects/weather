@@ -135,6 +135,7 @@ function renderChart(opts = {}) {
     forecast      = S.forecast,
     omFcast       = S.omFcast,
     omObs         = S.omObs,
+    wethrObs      = S.wethrObs,
     compare       = S.compare,
     omCompare     = S.omCompare,
     mos           = S.mos,
@@ -359,6 +360,21 @@ function renderChart(opts = {}) {
     });
   }
 
+  if (wethrObs && wethrObs.rows && wethrObs.rows.length) {
+    datasets.push({
+      label: 'Wethr Obs',
+      data: wethrObs.rows.map(r => ({ x: new Date(r.time), y: r.temp })),
+      borderColor: '#34d399',
+      backgroundColor: '#34d39914',
+      borderWidth: 1.2,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      fill: false,
+      tension: 0,
+      order: 8,
+    });
+  }
+
   if (!isSnap && chart) { chart.destroy(); chart = null; }
 
   // The CLI daily window ends at ~00:59 AM; +1 min lands exactly on the 01:00 AM
@@ -424,6 +440,7 @@ function renderChart(opts = {}) {
       _addMinMax(mos?.lav?.rows);
     }
     _addMinMax(omObs?.rows);
+    _addMinMax(wethrObs?.rows);
     if (refStats?.min_temp != null) {
       allMarkerPositions.push({ ms: +new Date(refStats.min_time), temp: refStats.min_temp });
       allMarkerPositions.push({ ms: +new Date(refStats.max_time), temp: refStats.max_temp });
@@ -533,6 +550,53 @@ function renderChart(opts = {}) {
     };
     placedAnchors.push({ ms: omObsMinX.getTime(), temp: omObsMinRow.temp, yOff: omObsMinY });
     placedAnchors.push({ ms: omObsMaxX.getTime(), temp: omObsMaxRow.temp, yOff: omObsMaxY });
+  }
+
+  // Wethr observed CLI-window min/max markers (emerald — mirrors NWS observed cliWindowOnly logic)
+  const wethrObsRows = inRange(wethrObs?.rows);
+  if (wethrObsRows.length) {
+    let wethrStats;
+    if (cliWindowOnly && obs?.cli_windows?.length) {
+      const cliRows = filterToCLIWindows(wethrObsRows, obs.cli_windows);
+      if (cliRows.length) wethrStats = computeStatsJS(cliRows);
+    }
+    wethrStats = wethrStats || computeStatsJS(wethrObsRows);
+    if (wethrStats) {
+      const wMinX = new Date(wethrStats.min_time);
+      const wMaxX = new Date(wethrStats.max_time);
+      const wMinEdge = edgeXAdjust(wMinX.getTime(), xMinMs, xMaxMs);
+      const wMaxEdge = edgeXAdjust(wMaxX.getTime(), xMinMs, xMaxMs);
+      const wMinY = pickYAdjust(wMinX.getTime(), wethrStats.min_temp, placedAnchors, allMarkerPositions);
+      const wMaxY = pickYAdjust(wMaxX.getTime(), wethrStats.max_temp, placedAnchors, allMarkerPositions);
+      annotations['wethr_min_pt'] = {
+        type: 'point', xValue: wMinX, yValue: wethrStats.min_temp,
+        backgroundColor: '#34d399', radius: 5,
+        borderColor: '#0f1117', borderWidth: 1,
+      };
+      annotations['wethr_min_lbl'] = {
+        type: 'label', xValue: wMinX, yValue: wethrStats.min_temp,
+        content: `${wethrStats.min_temp}${localSym()}`,
+        color: '#34d399',
+        font: { size: 9, family: 'Consolas,monospace' },
+        xAdjust: wMinEdge.xAdjust, yAdjust: wMinY,
+        backgroundColor: 'transparent', textAlign: wMinEdge.textAlign,
+      };
+      annotations['wethr_max_pt'] = {
+        type: 'point', xValue: wMaxX, yValue: wethrStats.max_temp,
+        backgroundColor: '#34d399', radius: 5,
+        borderColor: '#0f1117', borderWidth: 1,
+      };
+      annotations['wethr_max_lbl'] = {
+        type: 'label', xValue: wMaxX, yValue: wethrStats.max_temp,
+        content: `${wethrStats.max_temp}${localSym()}`,
+        color: '#34d399',
+        font: { size: 9, family: 'Consolas,monospace' },
+        xAdjust: wMaxEdge.xAdjust, yAdjust: wMaxY,
+        backgroundColor: 'transparent', textAlign: wMaxEdge.textAlign,
+      };
+      placedAnchors.push({ ms: wMinX.getTime(), temp: wethrStats.min_temp, yOff: wMinY });
+      placedAnchors.push({ ms: wMaxX.getTime(), temp: wethrStats.max_temp, yOff: wMaxY });
+    }
   }
 
   // Open-Meteo forecast min/max markers

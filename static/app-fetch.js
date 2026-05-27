@@ -9,7 +9,7 @@ async function doFetch() {
   S.fetchToken++;
   const token = S.fetchToken;
 
-  S.obs = S.forecast = S.omFcast = S.omObs = S.compare = S.omCompare = S.mos = null;
+  S.obs = S.forecast = S.omFcast = S.omObs = S.wethrObs = S.compare = S.omCompare = S.mos = null;
   S.nwsVersions = null; S.nwsVerSelected = {};
   renderFcStrip();
   renderNwsVersionList();
@@ -91,7 +91,6 @@ async function doFetch() {
     S.mos = data.error ? 'error' : data;
     renderFcStrip();
     renderChart();
-    if (document.querySelector('#tab-kalshi:not(.hidden)')) renderMosGuidance();
   }).catch(() => {
     if (token === S.fetchToken) { S.mos = 'error'; renderFcStrip(); }
   });
@@ -109,7 +108,6 @@ async function doFetch() {
         S.forecast = data.error ? 'error' : data;
         renderFcStrip();
         renderChart();
-        renderMosGuidance();
       }).catch(() => {
         if (token === S.fetchToken) { S.forecast = 'error'; renderFcStrip(); }
       }),
@@ -123,9 +121,25 @@ async function doFetch() {
         S.omFcast = data.error ? 'error' : data;
         renderFcStrip();
         renderChart();
-        renderMosGuidance();
       }).catch(() => {
         if (token === S.fetchToken) { S.omFcast = 'error'; renderFcStrip(); }
+      })
+    );
+  }
+
+  const wethrStation = typeof WETHR_STATIONS !== 'undefined' ? WETHR_STATIONS[S.city] : null;
+  if (wethrStation) {
+    parallel.push(
+      fetch('/api/observed/wethr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ station: wethrStation, start, end, units: S.units }),
+      }).then(r => r.json()).then(data => {
+        if (token !== S.fetchToken) return;
+        S.wethrObs = data.error ? 'error' : data;
+        renderChart();
+      }).catch(() => {
+        if (token === S.fetchToken) S.wethrObs = 'error';
       })
     );
   }

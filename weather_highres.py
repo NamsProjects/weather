@@ -44,12 +44,13 @@ def fetch_raw_obs(station_id: str, start_iso: str, end_iso: str,
         except Exception:
             pass
 
+    import math
     rows = []
     for idx, row in df.iterrows():
         dew = row.get("dewpoint")
         rows.append({
             "time":     idx.isoformat(),
             "temp":     float(row["temp"]),
-            "dewpoint": float(dew) if dew is not None else None,
+            "dewpoint": float(dew) if (dew is not None and not math.isnan(dew)) else None,
         })
     return rows

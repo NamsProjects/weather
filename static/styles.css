@@ -241,7 +241,7 @@ main {
 /* ── Cards ── */
 .cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 8px;
   flex-shrink: 0;
 }
@@ -259,8 +259,6 @@ main {
 .card-value { font-size: 20px; font-weight: bold; color: var(--text); line-height: 1.1; }
 .card-sub   { font-size: 10px; color: var(--muted); margin-top: 2px; }
 .card-dur   { font-size: 9px;  color: var(--muted); margin-top: 1px; }
-.card.min .card-value { color: var(--accent2); }
-.card.max .card-value { color: var(--warning); }
 
 /* ── Persistent chart section ── */
 #chart-section {
@@ -306,7 +304,6 @@ main {
 .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
 
 .tab-content {
-  min-height: 320px;
   display: flex;
   flex-direction: column;
 }
@@ -481,14 +478,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   flex-direction: column;
 }
 
-#kalshi-summary {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-  flex-shrink: 0;
-}
-
 /* ── Side-by-side panels container ── */
 #kalshi-panels {
   display: flex;
@@ -497,88 +486,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   min-height: 0;
   align-items: flex-start;
 }
-
-/* ── MOS guidance block ── */
-.mos-guidance {
-  background: #13161f;
-  border: 1px solid #2d3148;
-  border-radius: 6px;
-  padding: 8px 10px;
-  margin-bottom: 10px;
-  font-size: 11px;
-}
-.mos-loading, .mos-error { color: var(--muted); font-size: 10px; }
-.mos-header {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.mos-title {
-  font-size: 9px;
-  color: var(--muted);
-  letter-spacing: 0.06em;
-}
-.mos-meta { font-size: 9px; color: var(--muted); }
-.mos-row {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.mos-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.mos-cell-label { font-size: 9px; color: var(--muted); }
-.mos-cell-val   { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
-
-/* ── KPI slicer (expanded MOS / weather summary block) ── */
-.mos-slicer { padding: 8px 12px 10px; }
-.mos-slicer .mos-header { margin-bottom: 8px; }
-.kpi-col-heads { margin-left: auto; display: flex; gap: 4px; align-items: center; }
-.kpi-col-head  { font-size: 9px; color: var(--muted); letter-spacing: .06em; width: 40px; text-align: center; }
-.kpi-col-head-sep { font-size: 9px; color: var(--muted); }
-.kpi-slicer {
-  display: flex;
-  gap: 0;
-  align-items: flex-start;
-}
-.kpi-section {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  flex: 1;
-  min-width: 0;
-}
-.kpi-section-title {
-  font-size: 8px;
-  color: var(--muted);
-  letter-spacing: .1em;
-  margin-bottom: 2px;
-}
-.kpi-divider {
-  width: 1px;
-  background: #2d3148;
-  align-self: stretch;
-  margin: 0 14px;
-  flex-shrink: 0;
-}
-.kpi-cell {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-.kpi-cell-label {
-  font-size: 9px;
-  color: var(--muted);
-  width: 90px;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-.kpi-cell-vals { display: flex; align-items: baseline; gap: 3px; }
-.kpi-val       { font-size: 14px; font-weight: 600; letter-spacing: -0.02em; min-width: 40px; }
-.kpi-sep       { font-size: 10px; color: var(--muted); }
 
 .kalshi-panel {
   flex: 1;
@@ -610,20 +517,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   font-weight: bold;
 }
 
-.kalshi-expand-btn {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--muted);
-  font-family: var(--font);
-  font-size: 9px;
-  padding: 2px 7px;
-  border-radius: 3px;
-  cursor: pointer;
-  transition: border-color .15s, color .15s;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.kalshi-expand-btn:hover { border-color: var(--accent); color: var(--text); }
 
 .kalshi-sort-btn {
   background: var(--surface);
@@ -647,27 +540,17 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   max-height: 400px;
 }
 
-/* ── Table rows: compact (3 cols) vs expanded (7 cols) ── */
+/* ── Table rows: Range | % Chance | Yes ¢ | No ¢ | Volume | OI | Closes ── */
 .kalshi-table { background: var(--surface); }
 
 .kalshi-row {
   display: grid;
+  grid-template-columns: minmax(88px,1.4fr) 60px 48px 48px 62px 50px 64px;
   border-bottom: 1px solid var(--border);
   font-size: 11px;
 }
 .kalshi-row.hit   { background: #1e293b; }
 .kalshi-row:last-child { border-bottom: none; }
-
-/* Compact: Range | % Chance | Yes ¢ */
-.kalshi-row.compact {
-  grid-template-columns: minmax(100px,1fr) 64px 52px 52px;
-  min-width: 0;
-}
-/* Expanded: Range | % | Yes | No | Volume | OI | Closes — fixed widths so scroll kicks in */
-.kalshi-row.expanded {
-  grid-template-columns: 130px 64px 52px 52px 78px 62px 70px;
-  min-width: 510px;
-}
 
 .kalshi-row.header {
   background: var(--surface2);
@@ -699,17 +582,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   background: var(--surface);
   flex-shrink: 0;
 }
-
-.kalshi-summary-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 7px 12px;
-  flex: 0 1 200px;
-}
-.kalshi-summary-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
-.kalshi-summary-value { font-size: 14px; font-weight: bold; color: var(--text); margin-bottom: 1px; }
-.kalshi-summary-sub   { font-size: 9px; color: var(--muted); }
 
 @keyframes tick-flash {
   0%   { background: rgba(79, 142, 247, 0.30); }
@@ -1167,7 +1039,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   flex-shrink: 0;
   overflow: hidden;
 }
-.nt-chart-img   { width: 100%; display: block; }
+.nt-chart-img       { width: 100%; height: 360px; object-fit: fill; display: block; }
+.nt-chart-img-multi { width: 100%; height: 240px; object-fit: fill; display: block; }
 .nt-chart-empty {
   color: var(--muted);
   font-size: 13px;
@@ -1214,8 +1087,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   padding: 1px 5px;
   text-transform: uppercase;
 }
-.nt-chart-img-multi { width: 100%; display: block; }
-
 /* single-image wrapper (1 chart, with remove button) */
 .nt-chart-single-wrap { width: 100%; padding: 8px; box-sizing: border-box; }
 

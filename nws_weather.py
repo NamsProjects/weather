@@ -10,7 +10,7 @@ import time
 import logging
 from datetime import datetime, timezone
 from typing import Optional
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from zoneinfo import ZoneInfo
 
 import requests
 import pandas as pd
@@ -507,7 +507,7 @@ def iem_obs_to_dataframe(rows: list[dict]) -> pd.DataFrame:
 
 
 def _ensure_utc(dt_str: str) -> datetime:
-    dt = datetime.fromisoformat(dt_str)
+    dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     else:

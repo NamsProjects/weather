@@ -28,20 +28,18 @@ CITY_HIGH_SERIES: dict[str, str] = {
     "Denver":         "KXHIGHDEN",
     "Philadelphia":   "KXHIGHPHIL",
     "Austin":         "KXHIGHAUS",
-    # Cities below have LOW contracts; HIGH tickers not yet confirmed.
-    # Add once verified:
-    # "Boston":        "KXHIGH???",
-    # "Las Vegas":     "KXHIGH???",
-    # "San Antonio":   "KXHIGH???",
-    # "Washington DC": "KXHIGH???",
-    # "New Orleans":   "KXHIGH???",
-    # "San Francisco": "KXHIGH???",
-    # "Oklahoma City": "KXHIGH???",
-    # "Phoenix":       "KXHIGH???",
-    # "Minneapolis":   "KXHIGH???",
-    # "Dallas":        "KXHIGH???",
-    # "Atlanta":       "KXHIGH???",
-    # "Houston":       "KXHIGH???",
+    "Houston":        "KXHIGHTHOU",
+    "Boston":         "KXHIGHTBOS",
+    "Las Vegas":      "KXHIGHTLV",
+    "San Antonio":    "KXHIGHTSATX",
+    "Washington DC":  "KXHIGHTDC",
+    "New Orleans":    "KXHIGHTNOLA",
+    "San Francisco":  "KXHIGHTSFO",
+    "Oklahoma City":  "KXHIGHTOKC",
+    "Phoenix":        "KXHIGHTPHX",
+    "Minneapolis":    "KXHIGHTMIN",
+    "Dallas":         "KXHIGHTDAL",
+    "Atlanta":        "KXHIGHTATL",
 }
 
 # ── Verified LOW series tickers (prefix is KXLOWT, not KXLOW) ────────────────
@@ -65,7 +63,7 @@ CITY_LOW_SERIES: dict[str, str] = {
     "Dallas":         "KXLOWTDAL",
     "Atlanta":        "KXLOWTATL",
     "Houston":        "KXLOWTHOU",
-    # Denver not seen in low URLs — may not have a low contract yet.
+    "Denver":         "KXLOWTDEN",
 }
 
 # ── City timezone lookup ──────────────────────────────────────────────────────

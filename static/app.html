@@ -30,84 +30,54 @@
 
       <div class="sep"></div>
 
-      <div class="section-label">Date Range</div>
       <label>Start</label>
       <input type="datetime-local" id="start-input" />
       <label style="margin-top:6px">End</label>
       <input type="datetime-local" id="end-input" />
 
       <div class="section-label" style="margin-top:8px">Presets</div>
-      <div class="presets">
+      <div class="presets" style="align-items:center">
         <button class="preset-btn" data-p="today">Today</button>
         <button class="preset-btn" data-p="yesterday">Yesterday</button>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:5px">
+          <span class="toggle-lbl on" id="lbl-nws" style="font-size:10px">NWS</span>
+          <div class="toggle-track" id="source-toggle">
+            <div class="toggle-knob"></div>
+          </div>
+          <span class="toggle-lbl" id="lbl-iem" style="font-size:10px">IEM</span>
+        </span>
       </div>
 
       <div class="sep"></div>
 
-      <div class="section-label">Options</div>
-
-      <div class="two-col" style="margin-bottom:6px">
-        <div>
-          <label>Units</label>
-          <div class="toggle-row">
-            <span class="toggle-lbl on" id="lbl-f">°F</span>
-            <div class="toggle-track" id="units-toggle">
-              <div class="toggle-knob"></div>
-            </div>
-            <span class="toggle-lbl" id="lbl-c">°C</span>
-          </div>
-        </div>
-        <div>
-          <label>Source</label>
-          <div class="toggle-row">
-            <span class="toggle-lbl on" id="lbl-nws">NWS</span>
-            <div class="toggle-track" id="source-toggle">
-              <div class="toggle-knob"></div>
-            </div>
-            <span class="toggle-lbl" id="lbl-iem">IEM</span>
-          </div>
-        </div>
-      </div>
-
       <label>Interval</label>
       <select id="interval-select" style="margin-bottom:6px">
         <option value="hourly">Hourly</option>
-        <option value="30min">30 min</option>
+        <option value="30min" selected>30 min</option>
       </select>
 
       <label>Duration tolerance (°)</label>
       <input type="number" id="tol-input" value="1.0" min="0" step="0.5" />
 
-      <label class="check-row" style="margin-top:8px">
-        <input type="checkbox" id="forecast-enable" checked />
-        <span>Show Forecasts</span>
-      </label>
-
       <div class="sep"></div>
 
-      <div class="section-label">CLI Stats Filter</div>
-      <label class="check-row">
-        <input type="checkbox" id="cli-window-only" checked />
-        <span>CLI window only</span>
-      </label>
-
-      <div class="sep"></div>
-
-      <div class="section-label">Compare Overlay</div>
-      <label class="check-row" style="margin-bottom:6px">
-        <input type="checkbox" id="compare-enable" />
-        <span>Enable prior-period overlay</span>
-      </label>
-      <label>Offset</label>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+        <span class="section-label" style="margin:0">Compare Overlay</span>
+        <div class="toggle-row" style="gap:4px">
+          <span class="toggle-lbl on" id="lbl-cmp-off" style="font-size:10px">Off</span>
+          <div class="toggle-track" id="compare-toggle"><div class="toggle-knob"></div></div>
+          <span class="toggle-lbl" id="lbl-cmp-on" style="font-size:10px">On</span>
+        </div>
+      </div>
       <select id="compare-offset" style="margin-bottom:4px">
         <option value="1">1 day prior</option>
         <option value="2">2 days prior</option>
         <option value="3">3 days prior</option>
         <option value="7">7 days prior</option>
       </select>
-      <div class="status-bar" id="compare-status"></div>
+      <div class="status-bar" id="compare-status" style="min-height:0;margin-top:2px"></div>
 
-      <div class="sep"></div>
+      <div class="sep" style="margin-top:5px"></div>
 
       <div class="section-label">NWS Forecast Versions</div>
       <button class="ghost-btn" id="nws-ver-fetch-btn" style="width:100%;margin-bottom:4px">↻ Refresh Versions</button>
@@ -148,6 +118,16 @@
         <div class="card-value" id="val-max">—</div>
         <div class="card-sub"  id="sub-max"></div>
         <div class="card-dur"  id="dur-max"></div>
+      </div>
+      <div class="card wethr-min">
+        <div class="card-label">MIN · WETHR</div>
+        <div class="card-value" id="val-wethr-low">—</div>
+        <div class="card-sub"  id="sub-wethr-low"></div>
+      </div>
+      <div class="card wethr-max">
+        <div class="card-label">MAX · WETHR</div>
+        <div class="card-value" id="val-wethr-high">—</div>
+        <div class="card-sub"  id="sub-wethr-high"></div>
       </div>
     </div>
 
@@ -190,7 +170,6 @@
         <div class="hr-status" id="hr-status">Auto-populates when data is loaded in the Chart tab.</div>
         <div class="hr-stats-wrap">
           <div id="wethr-live-row"></div>
-          <div class="hr-stats-row" id="hr-stats-row"></div>
         </div>
         <div class="hr-chart-wrap">
           <canvas id="hr-chart"></canvas>
@@ -207,7 +186,6 @@
       <div class="tab-content hidden" id="tab-kalshi">
         <div id="kalshi-inner">
           <div id="kalshi-status" style="font-size:10px;color:var(--muted);margin-bottom:8px">Load data to fetch Kalshi contracts.</div>
-          <div id="kalshi-summary"></div>
           <div id="kalshi-panels">
             <div id="kalshi-panel-high" class="kalshi-panel"></div>
             <div id="kalshi-panel-low"  class="kalshi-panel"></div>
@@ -269,8 +247,10 @@ The CLI is the authoritative settlement source for Kalshi weather markets.</pre>
       <!-- Notes tab -->
       <div class="tab-content hidden" id="tab-notes">
 
-        <!-- Toolbar row 1 -->
+        <!-- Toolbar -->
         <div class="nt-toolbar nt-toolbar-1">
+          <button class="nt-copy-btn" id="nt-copy-btn">&#9633; Copy note</button>
+          <div class="nt-toolbar-sep"></div>
           <span class="nt-type-label">TYPE:</span>
           <button class="nt-type-btn active" id="nt-type-high">HIGH</button>
           <button class="nt-type-btn"        id="nt-type-low">LOW</button>
@@ -278,12 +258,7 @@ The CLI is the authoritative settlement source for Kalshi weather markets.</pre>
           <button class="nt-action-btn" id="nt-refresh-snap">&#9633; Refresh + Snap</button>
           <button class="nt-action-btn" id="nt-snap-btn">&#9633; Snap</button>
           <button class="nt-action-btn" id="nt-export-btn">&#9633; Export PNG</button>
-        </div>
-
-        <!-- Toolbar row 2 -->
-        <div class="nt-toolbar nt-toolbar-2">
-          <button class="nt-copy-btn" id="nt-copy-btn">&#9633; Copy note</button>
-          <span class="nt-city-label">CITY: <span id="nt-city-display" class="nt-city-val">—</span></span>
+          <span class="nt-city-label" style="margin-left:auto">CITY: <span id="nt-city-display" class="nt-city-val">—</span></span>
         </div>
 
         <!-- Split panel -->
@@ -297,7 +272,7 @@ The CLI is the authoritative settlement source for Kalshi weather markets.</pre>
           <!-- Right: detail view -->
           <div class="nt-detail" id="nt-detail">
             <div class="nt-detail-empty" id="nt-detail-empty">
-              No snapshot yet —<br>click <b>Refresh + Snap</b> or <b>Snap</b>
+              <div>No snapshot yet</div>
             </div>
           </div>
 

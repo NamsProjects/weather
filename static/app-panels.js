@@ -176,7 +176,6 @@ async function fetchKalshi() {
   if (!city) return;
 
   $('kalshi-status').textContent = 'Fetching Kalshi contracts…';
-  $('kalshi-summary').innerHTML = '';
   $('kalshi-panel-high').innerHTML = '';
   $('kalshi-panel-low').innerHTML = '';
 
@@ -270,117 +269,11 @@ function renderKalshi(data) {
     return;
   }
 
-  $('kalshi-summary').innerHTML = '';
-  renderMosGuidance();
   renderKalshiPanel($('kalshi-panel-high'), 'HIGH TEMP CONTRACTS', high);
   renderKalshiPanel($('kalshi-panel-low'),  'LOW TEMP CONTRACTS',  low);
 
   $('kalshi-status').textContent = `✓ ${data.city} · ${high.length} high / ${low.length} low contracts`;
   startKalshiLive(data.city);
-}
-
-// ── MOS guidance block (above market tables) ──────────────────────────────────
-function renderMosGuidance() {
-  const el = $('kalshi-summary');
-  if (!el) return;
-
-  if (!S.mos || S.mos === 'loading') {
-    el.innerHTML = `<div class="mos-guidance mos-loading">MOS loading…</div>`;
-    return;
-  }
-  if (S.mos === 'error') {
-    el.innerHTML = `<div class="mos-guidance mos-error">MOS unavailable</div>`;
-    return;
-  }
-
-  const sym_ = sym();
-  const gfs  = S.mos.gfs  || {};
-  const lav  = S.mos.lav  || {};
-
-  function nextNx(nxArr, type) {
-    if (!nxArr || !nxArr.length) return null;
-    const now = Date.now();
-    const upcoming = nxArr.filter(v => v.type === type && new Date(v.time).getTime() >= now);
-    if (upcoming.length) return upcoming[0];
-    const past = nxArr.filter(v => v.type === type);
-    return past.length ? past[past.length - 1] : null;
-  }
-
-  const gfsHigh = nextNx(gfs.n_x_vals, 'high');
-  const gfsLow  = nextNx(gfs.n_x_vals, 'low');
-
-  function rowMinMax(rows) {
-    if (!rows || !rows.length) return null;
-    const temps = rows.map(r => r.temp).filter(v => v != null);
-    if (!temps.length) return null;
-    return { lo: Math.min(...temps), hi: Math.max(...temps) };
-  }
-
-  const lavR  = rowMinMax(lav.rows);
-  const nwsR  = (S.forecast  && S.forecast.rows)  ? rowMinMax(S.forecast.rows)  : null;
-  const omFR  = (S.omFcast   && S.omFcast.rows)   ? rowMinMax(S.omFcast.rows)   : null;
-  const omObR = (S.omObs     && S.omObs.rows)      ? rowMinMax(S.omObs.rows)     : null;
-
-  function fmtRun(iso) {
-    if (!iso) return '?';
-    try {
-      return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    } catch { return iso; }
-  }
-
-  function kpiCell(label, hi, lo, hiColor, loColor) {
-    const hiDisp = hi != null ? `${hi}${sym_}` : '—';
-    const loDisp = lo != null ? `${lo}${sym_}` : '—';
-    return `
-      <div class="kpi-cell">
-        <span class="kpi-cell-label">${label}</span>
-        <div class="kpi-cell-vals">
-          <span class="kpi-val" style="color:${hiColor}">${hiDisp}</span>
-          <span class="kpi-sep">/</span>
-          <span class="kpi-val" style="color:${loColor}">${loDisp}</span>
-        </div>
-      </div>`;
-  }
-
-  const stationLabel = S.mos.station || '';
-  const gfsRunLabel  = gfs.runtime ? `GFS run ${fmtRun(gfs.runtime)}` : '';
-  const lavRunLabel  = lav.runtime ? `LAMP run ${fmtRun(lav.runtime)}` : '';
-  const metaStr = [stationLabel, gfsRunLabel, lavRunLabel].filter(Boolean).join(' · ');
-
-  const nwsObsHi = S.obs ? S.obs.max_temp : null;
-  const nwsObsLo = S.obs ? S.obs.min_temp : null;
-
-  el.innerHTML = `
-    <div class="mos-guidance mos-slicer">
-      <div class="mos-header">
-        <span class="mos-title">WEATHER SUMMARY</span>
-        <span class="mos-meta">${metaStr}</span>
-        <span class="kpi-col-heads">
-          <span class="kpi-col-head">HIGH</span>
-          <span class="kpi-col-head-sep">/</span>
-          <span class="kpi-col-head">LOW</span>
-        </span>
-      </div>
-      <div class="kpi-slicer">
-        <div class="kpi-section">
-          <span class="kpi-section-title">OBSERVED</span>
-          ${kpiCell('NWS', nwsObsHi, nwsObsLo, '#facc15', '#7ec8e3')}
-          ${omObR ? kpiCell('Open-Meteo', omObR.hi, omObR.lo, '#facc15', '#7ec8e3') : ''}
-        </div>
-        <div class="kpi-divider"></div>
-        <div class="kpi-section">
-          <span class="kpi-section-title">FORECAST</span>
-          ${nwsR ? kpiCell('NWS Gridpoint', nwsR.hi, nwsR.lo, '#4f8ef7', '#4f8ef7') : ''}
-          ${omFR ? kpiCell('Open-Meteo',    omFR.hi, omFR.lo, '#4f8ef7', '#4f8ef7') : ''}
-        </div>
-        <div class="kpi-divider"></div>
-        <div class="kpi-section">
-          <span class="kpi-section-title">MOS</span>
-          ${kpiCell('GFS', gfsHigh ? gfsHigh.value : null, gfsLow ? gfsLow.value : null, '#a78bfa', '#a78bfa')}
-          ${lavR ? kpiCell('LAMP', lavR.hi, lavR.lo, '#4ade80', '#4ade80') : ''}
-        </div>
-      </div>
-    </div>`;
 }
 
 // ── Live feed (SSE) ───────────────────────────────────────────────────────────
@@ -459,10 +352,9 @@ function renderKalshiPanel(panelEl, title, markets) {
   }
   panelEl.style.display = '';
 
-  let expanded = panelEl._expanded || false;
   let sortMode = panelEl._sortMode || 'chance'; // 'chance' | 'temp'
 
-  const tempSorted   = [...markets]; // API returns temp-sorted
+  const tempSorted   = [...markets];
   const chanceSorted = [...markets].sort((a, b) =>
     (parseFloat(b.last_price_dollars) || 0) - (parseFloat(a.last_price_dollars) || 0)
   );
@@ -473,12 +365,10 @@ function renderKalshiPanel(panelEl, title, markets) {
     <span class="kalshi-panel-title">${title}</span>
     <div style="display:flex;gap:6px;align-items:center">
       <button class="kalshi-sort-btn">sort: ${sortMode === 'chance' ? '% chance' : 'temp'}</button>
-      <button class="kalshi-expand-btn">${expanded ? '◂ collapse' : '▸ expand'}</button>
     </div>`;
   panelEl.appendChild(hdr);
 
-  const expandBtn = hdr.querySelector('.kalshi-expand-btn');
-  const sortBtn   = hdr.querySelector('.kalshi-sort-btn');
+  const sortBtn = hdr.querySelector('.kalshi-sort-btn');
 
   const scrollWrap = document.createElement('div');
   scrollWrap.className = 'kalshi-table-scroll';
@@ -490,16 +380,12 @@ function renderKalshiPanel(panelEl, title, markets) {
 
   function buildTable() {
     scrollWrap.innerHTML = '';
-
-    const rowCls = expanded ? 'expanded' : 'compact';
-    const table  = document.createElement('div');
+    const table = document.createElement('div');
     table.className = 'kalshi-table';
 
     const hdrRow = document.createElement('div');
-    hdrRow.className = `kalshi-row header ${rowCls}`;
-    const compactHdrs = ['Range', '% Chance', 'Yes ¢', 'No ¢'];
-    const extraHdrs   = ['Volume', 'OI', 'Closes'];
-    (expanded ? [...compactHdrs, ...extraHdrs] : compactHdrs).forEach(h => {
+    hdrRow.className = 'kalshi-row header';
+    ['Range', '% Chance', 'Yes ¢', 'No ¢', 'Volume', 'OI', 'Closes'].forEach(h => {
       const c = document.createElement('div');
       c.className = 'kalshi-cell header';
       c.textContent = h;
@@ -509,31 +395,24 @@ function renderKalshiPanel(panelEl, title, markets) {
 
     getSorted().forEach(m => {
       const row = document.createElement('div');
-      row.className = `kalshi-row ${rowCls}`;
-
-      const subtitle = m.yes_sub_title || '—';
-      const yes_bid  = _dollarsTocents(m.yes_bid_dollars);
-      const pct_str  = m.last_price_dollars ? Math.round(parseFloat(m.last_price_dollars)*100)+'%' : '—';
-
-      const compactCols = [
-        { text: subtitle, cls: 'label', field: '' },
-        { text: pct_str,  cls: '',      field: 'pct' },
-        { text: yes_bid,  cls: 'yes',   field: 'yes_bid' },
-        { text: _dollarsTocents(m.no_bid_dollars), cls: 'no', field: 'no_bid' },
-      ];
-      const extraCols = [
-        { text: _fmt_volume(m.volume_fp),        cls: 'vol', field: '' },
-        { text: _fmt_volume(m.open_interest_fp), cls: 'vol', field: '' },
-        { text: _fmt_close_time(m.close_time),   cls: '',    field: '' },
-      ];
-      row.dataset.ticker = m.ticker || '';
-      (expanded ? [...compactCols, ...extraCols] : compactCols).forEach(col => {
+      row.className = 'kalshi-row';
+      const pct_str = m.last_price_dollars ? Math.round(parseFloat(m.last_price_dollars)*100)+'%' : '—';
+      [
+        { text: m.yes_sub_title || '—',                    cls: 'label', field: '' },
+        { text: pct_str,                                   cls: '',      field: 'pct' },
+        { text: _dollarsTocents(m.yes_bid_dollars),        cls: 'yes',   field: 'yes_bid' },
+        { text: _dollarsTocents(m.no_bid_dollars),         cls: 'no',    field: 'no_bid' },
+        { text: _fmt_volume(m.volume_fp),                  cls: 'vol',   field: '' },
+        { text: _fmt_volume(m.open_interest_fp),           cls: 'vol',   field: '' },
+        { text: _fmt_close_time(m.close_time),             cls: '',      field: '' },
+      ].forEach(col => {
         const c = document.createElement('div');
         c.className = 'kalshi-cell ' + col.cls;
         c.textContent = col.text;
         if (col.field) c.dataset.field = col.field;
         row.appendChild(c);
       });
+      row.dataset.ticker = m.ticker || '';
       table.appendChild(row);
     });
 
@@ -541,13 +420,6 @@ function renderKalshiPanel(panelEl, title, markets) {
   }
 
   buildTable();
-
-  expandBtn.addEventListener('click', () => {
-    expanded = !expanded;
-    panelEl._expanded = expanded;
-    expandBtn.textContent = expanded ? '◂ collapse' : '▸ expand';
-    buildTable();
-  });
 
   sortBtn.addEventListener('click', () => {
     sortMode = sortMode === 'chance' ? 'temp' : 'chance';
@@ -592,8 +464,6 @@ function _fmt_close_time(close_time_str) {
 // ── High-Res tab ─────────────────────────────────────────────────────────────
 let hrChart = null;
 
-// Wipe the High-Res chart + state. Called on city change so stale obs
-// from a previous city don't linger when the new city's fetch fails.
 function clearHighResView() {
   if (hrChart) { try { hrChart.destroy(); } catch {} hrChart = null; }
   HR.station = ''; HR.start = ''; HR.end = '';
@@ -837,8 +707,6 @@ function renderHighResChart(rows, station, source) {
     },
   });
 
-  renderHrStats(minVal, maxVal, minTime, maxTime, dewAtMin, rows.length, source);
-
   const srcTag = source === 'iem' ? 'METAR+SPECI obs' : 'METAR obs';
   hrSetStatus(
     `${rows.length} ${srcTag}  ·  ` +
@@ -855,50 +723,6 @@ function buildMinLabel(minVal, sym_, minTime, dewAtMin) {
     lines.push(`floor ${dewAtMin.toFixed(1)}${sym_} (gap ${gap.toFixed(1)}°)`);
   }
   return lines;
-}
-
-function renderHrStats(minVal, maxVal, minTime, maxTime, dewAtMin, count, source) {
-  const sym_ = sym();
-  const row  = $('hr-stats-row');
-  row.innerHTML = '';
-
-  function card(label, value, color, sub) {
-    const el = document.createElement('div');
-    el.className = 'hr-stat-card';
-    el.innerHTML =
-      `<div class="hr-stat-label">${label}</div>` +
-      `<div class="hr-stat-value" style="color:${color}">${value}</div>` +
-      (sub ? `<div class="hr-stat-sub">${sub}</div>` : '');
-    row.appendChild(el);
-  }
-
-  card('Obs Low',  `${minVal.toFixed(2)}${sym_}`, '#3ecf8e', fmtTime(minTime.toISOString()));
-
-  if (dewAtMin !== null && dewAtMin !== undefined) {
-    const gap = minVal - dewAtMin;
-    let floorSub;
-    if (gap <= 0.5)      floorSub = 'dew pt = obs — true min likely at obs';
-    else if (gap <= 1.5) floorSub = `true min likely ${dewAtMin.toFixed(1)}–${minVal.toFixed(1)}${sym_}`;
-    else                 floorSub = `wide gap — true min could be ${gap.toFixed(1)}° lower`;
-    card('Dew Pt Floor', `${dewAtMin.toFixed(1)}${sym_}`, '#a78bfa', floorSub);
-  }
-
-  card('Obs High', `${maxVal.toFixed(2)}${sym_}`, '#f5a623', fmtTime(maxTime.toISOString()));
-
-  if (S.cli && !S.cli.error) {
-    if (S.cli.low_temp != null) {
-      const cl = S.units === 'C' ? ((S.cli.low_temp - 32) * 5/9) : S.cli.low_temp;
-      const diff = minVal - cl;
-      const match = Math.abs(diff) < 0.6 ? '✓ match' : `gap: ${diff >= 0 ? '+' : ''}${diff.toFixed(2)}${sym_}`;
-      card('CLI Official Low', `${S.cli.low_temp}°F`, '#7ec8e3', match);
-    }
-    if (S.cli.high_temp != null) {
-      const ch = S.units === 'C' ? ((S.cli.high_temp - 32) * 5/9) : S.cli.high_temp;
-      const diff = maxVal - ch;
-      const match = Math.abs(diff) < 0.6 ? '✓ match' : `gap: ${diff >= 0 ? '+' : ''}${diff.toFixed(2)}${sym_}`;
-      card('CLI Official High', `${S.cli.high_temp}°F`, '#f5a623', match);
-    }
-  }
 }
 
 function autoPopulateHighRes(result, startStr, endStr) {

@@ -6,7 +6,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     const tab = btn.dataset.tab;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('hidden', c.id !== 'tab-' + tab));
-    if (tab === 'kalshi' && S.mos) renderMosGuidance();
   });
 });
 
@@ -78,10 +77,6 @@ function buildToggle(trackId, onLabel, offLabel, getState, setState) {
   refresh();
 }
 
-buildToggle('units-toggle',  'lbl-f',   'lbl-c',
-  () => S.units === 'C',
-  v  => { S.units = v ? 'C' : 'F'; }
-);
 buildToggle('source-toggle', 'lbl-nws', 'lbl-iem',
   () => S.source === 'IEM',
   v  => { S.source = v ? 'IEM' : 'NWS'; }
@@ -91,19 +86,11 @@ buildToggle('source-toggle', 'lbl-nws', 'lbl-iem',
 $('interval-select').addEventListener('change', e => S.interval = e.target.value);
 $('tol-input').addEventListener('change', e => { S.tolerance = parseFloat(e.target.value) || 1.0; });
 
-$('cli-window-only').addEventListener('change', e => {
-  S.cliWindowOnly = e.target.checked;
-  if (S.obs) renderCards();
-});
 
-$('forecast-enable').addEventListener('change', e => {
-  S.forecastEnabled = e.target.checked;
-});
-
-$('compare-enable').addEventListener('change', e => {
-  S.compareEnabled = e.target.checked;
-  $('compare-status').textContent = '';
-});
+buildToggle('compare-toggle', 'lbl-cmp-off', 'lbl-cmp-on',
+  () => S.compareEnabled,
+  v  => { S.compareEnabled = v; $('compare-status').textContent = ''; }
+);
 $('compare-offset').addEventListener('change', e => S.compareOffset = parseInt(e.target.value));
 
 // ── Cities ────────────────────────────────────────────────────────────────────
@@ -126,6 +113,7 @@ async function loadCities() {
       S.cityTz  = cityTimezones[e.target.value] || S.cityTz;
       S.cityDst = cityDstMap[e.target.value] !== false;
       stopKalshiLive();
+      if (typeof stopWethrLive === 'function') stopWethrLive();
 
       // Wipe stale data + UI from the previous city so a failed fetch can't
       // leave the old city's chart/station/cards on screen with the new city name.
@@ -135,15 +123,16 @@ async function loadCities() {
       S.nwsVersions = null; S.nwsVerSelected = {};
 
       clearChartView();
-      if (typeof clearHighResView === 'function') clearHighResView();
+
+      // Wipe Kalshi panels so the previous city's contracts don't linger.
+      const kHigh = $('kalshi-panel-high'); if (kHigh) kHigh.innerHTML = '';
+      const kLow  = $('kalshi-panel-low');  if (kLow)  kLow.innerHTML  = '';
+      const kSt   = $('kalshi-status');     if (kSt)   kSt.textContent = 'Load data to fetch Kalshi contracts.';
 
       ['val-station','val-records','val-min','val-max',
-       'sub-station','sub-records','sub-min','sub-max','dur-min','dur-max']
+       'sub-station','sub-records','sub-min','sub-max','dur-min','dur-max',
+       'val-wethr-low','val-wethr-high','sub-wethr-low','sub-wethr-high']
         .forEach(id => { const el = $(id); if (el) el.textContent = '—'; });
-
-      ['hr-station','hr-start','hr-end'].forEach(id => {
-        const el = $(id); if (el) el.value = '';
-      });
 
       if (typeof renderFcStrip === 'function') renderFcStrip();
       if (typeof renderNwsVersionList === 'function') renderNwsVersionList();

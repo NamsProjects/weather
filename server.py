@@ -6,7 +6,7 @@ Wraps the existing data modules as REST endpoints.
 
 Install:  pip install flask
 Run with: python server.py
-Open:     http://localhost:5000
+Open:     http://localhost:5000/app
 """
 
 import json
@@ -26,7 +26,7 @@ try:
 except ImportError:
     pass
 
-from flask import Flask, jsonify, request, send_from_directory, Response, stream_with_context
+from flask import Flask, jsonify, redirect, request, send_from_directory, Response, stream_with_context
 from nws_weather import get_temperature_summary, get_cli_report, f_to_c
 from weather_utils import CITIES, CLI_LOCATIONS, CLI_STATION_COORDS, CLI_STATION_IDS
 from kalshi_markets import get_city_contracts
@@ -77,17 +77,6 @@ def _convert_browser_to_city(dt_str: str, browser_tz: str, city_tz: str) -> str:
         return dt.isoformat()
 
 
-def _localize_naive(dt_str: str, tz_name: str) -> str:
-    """DEPRECATED: Use _convert_browser_to_city instead.
-
-    This old function incorrectly attaches timezone to naive datetime strings
-    without accounting for the browser's local timezone.
-    """
-    dt = datetime.fromisoformat(dt_str)
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=ZoneInfo(tz_name))
-    return dt.isoformat()
-
 app = Flask(__name__, static_folder="static", static_url_path="")
 
 
@@ -104,7 +93,7 @@ def no_cache(response):
 
 @app.route("/")
 def index():
-    return send_from_directory("static", "index.html")
+    return redirect("/app")
 
 
 @app.route("/app")
@@ -651,7 +640,87 @@ def api_compare_openmeteo():
         return jsonify({"error": str(exc)}), 500
 
 
-# ── High-resolution raw observations ─────────────────────────────────────────
+# ── Wethr observed line for main chart ────────────────────────────────────────
+
+@app.route("/api/observed/wethr", methods=["POST"])
+def api_observed_wethr():
+    """Fetch Wethr METAR/HF-METAR/SPECI obs for the main chart.
+    Auto-chunks multi-day ranges into 24-hour windows to stay within the API limit.
+    """
+    body    = request.get_json(force=True)
+    station = (body.get("station") or "").strip().upper()
+    start   = body.get("start", "")
+    end     = body.get("end", "")
+    units   = body.get("units", "F")
+
+    if not station or not start or not end:
+        return jsonify({"error": "station, start, and end are required"}), 400
+    if not WETHR_API_KEY:
+        return jsonify({"error": "WETHR_API_KEY not configured on the server"}), 500
+
+    try:
+        import requests as _req
+        from nws_weather import _ensure_utc
+        from datetime import timedelta
+
+        s_dt = _ensure_utc(start)
+        e_dt = _ensure_utc(end)
+
+        # Split into 24-hour chunks (API hard limit per request)
+        chunks, cur = [], s_dt
+        while cur < e_dt:
+            chunks.append((cur, min(cur + timedelta(hours=24), e_dt)))
+            cur = chunks[-1][1]
+
+        seen, rows = set(), []
+        for chunk_s, chunk_e in chunks:
+            resp = _req.get(
+                f"{WETHR_BASE}/api/v2/observations.php",
+                params={
+                    "station_code": station,
+                    "start_time":   chunk_s.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "end_time":     chunk_e.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                },
+                headers={"Authorization": f"Bearer {WETHR_API_KEY}"},
+                timeout=15,
+            )
+            resp.raise_for_status()
+            obs_list = resp.json()
+            if not isinstance(obs_list, list):
+                continue
+            for obs in obs_list:
+                obs_time = obs.get("observation_time", "")
+                temp_c   = obs.get("temperature")
+                if not obs_time or temp_c is None:
+                    continue
+                ts = obs_time.replace(" ", "T")
+                if not ts.endswith("Z"):
+                    ts += "Z"
+                if ts in seen:
+                    continue
+                seen.add(ts)
+                dew_c = obs.get("dew_point")
+                rows.append({
+                    "time":     ts,
+                    "temp":     round(float(temp_c) * 9 / 5 + 32, 2),
+                    "dewpoint": round(float(dew_c) * 9 / 5 + 32, 2) if dew_c is not None else None,
+                })
+
+        rows.sort(key=lambda r: r["time"])
+
+        if units == "C":
+            for row in rows:
+                row["temp"] = f_to_c(row["temp"])
+                if row.get("dewpoint") is not None:
+                    row["dewpoint"] = f_to_c(row["dewpoint"])
+
+        return jsonify({"rows": rows, "station": station, "count": len(rows)})
+    except Exception as exc:
+        print(f"[WETHR OBS ERROR] {exc}", file=sys.stderr, flush=True)
+        return jsonify({"error": str(exc)}), 500
+
+
+# ── High-res METAR/SPECI ──────────────────────────────────────────────────────
 
 @app.route("/api/highres", methods=["POST"])
 def api_highres():
@@ -752,8 +821,8 @@ def api_mos():
                     # GFS-MOS has 7-day data; cap with a 3-h buffer so Chart.js
                     # can draw a segment that reaches the xMax boundary.
                     results[model]["rows"]     = _cap_rows(results[model].get("rows", []), extra_hours=3)
-                    # Marker values stay at the strict cap so dots/labels don't appear past midnight.
-                    results[model]["n_x_vals"] = _cap_rows(results[model].get("n_x_vals", []))
+                    # n_x_vals are daily high/low summaries used in the panel —
+                    # don't cap them; they're valid for future days by design.
         return jsonify({"city": city, "station": station_id, **results})
     except Exception as exc:
         import traceback
@@ -1214,7 +1283,5 @@ def api_wethr_stream():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    print(f"\n  NWS Weather Explorer")
-    print(f"  Classic UI  ->  http://localhost:{port}/")
-    print(f"  Full UI     ->  http://localhost:{port}/app\n")
+    print(f"\n  NWS Weather Explorer  ->  http://localhost:{port}/app\n")
     app.run(debug=False, port=port, threaded=True)

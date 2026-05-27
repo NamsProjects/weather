@@ -4,7 +4,7 @@
 const S = {
   units:          'F',
   source:         'NWS',
-  interval:       'hourly',
+  interval:       '30min',
   tolerance:      1.0,
   cliWindowOnly:  true,
   forecastEnabled: true,
@@ -26,6 +26,7 @@ const S = {
   cliList:     [],     // [{id, issuanceTime, label}, ...]
   kalshi:      null,   // last /api/kalshi response {city, high_markets, low_markets, ...}
   mos:         null,   // {city, station, gfs:{rows,n_x_vals,runtime}, lav:{rows,n_x_vals,runtime}}
+  wethrObs:    null,   // {rows} — Wethr METAR/HF-METAR/SPECI obs for main chart
   nwsVersions:     null,   // {versions_by_date: {date: [{label,index,times,temps}]}}
   nwsVerSelected:  {},     // {"date|idx": bool}
   nwsVerEnabled:   false,

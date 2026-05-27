@@ -83,6 +83,10 @@ function _currentRowsBundle() {
     om_compare_offset: S.omCompare?.offset_days || null,
     mos_gfs_rows:      S.mos?.gfs?.rows              || [],
     mos_lav_rows:      S.mos?.lav?.rows              || [],
+    wethr_rows:        (S.wethrObs && S.wethrObs !== 'error') ? (S.wethrObs.rows || []) : [],
+    wethr_stats:       (S.wethrObs && S.wethrObs !== 'error' && S.wethrObs.rows?.length)
+                         ? computeStatsJS(S.wethrObs.rows)
+                         : null,
     nws_versions:      S.nwsVersions?.versions_by_date || {},
     nws_ver_selected:  { ...(S.nwsVerSelected || {}) },
     cli_window_only:   !!S.cliWindowOnly,
@@ -267,6 +271,10 @@ async function ntDoSnap(withRefresh) {
       om_compare_offset: S.omCompare?.offset_days || null,
       mos_gfs_rows:     (S.mos?.gfs?.rows)             || [],
       mos_lav_rows:     (S.mos?.lav?.rows)             || [],
+      wethr_rows:       (S.wethrObs && S.wethrObs !== 'error') ? (S.wethrObs.rows || []) : [],
+      wethr_stats:      (S.wethrObs && S.wethrObs !== 'error' && S.wethrObs.rows?.length)
+                          ? computeStatsJS(S.wethrObs.rows)
+                          : null,
       nws_versions:     S.nwsVersions?.versions_by_date || {},
       nws_ver_selected: { ...(S.nwsVerSelected || {}) },
       cli_window_only:  !!S.cliWindowOnly,
@@ -583,11 +591,20 @@ function ntRenderDetail(snap) {
       if (mode === 'image') {
         const bundle = _rowBundleForEntry(snap, removeKey);
         if (!bundle) return;
+        // Capture the image's currently rendered box so the interactive canvas
+        // takes the exact same physical space — avoids any layout shift on toggle.
+        const imgRect = img.getBoundingClientRect();
+        const lockedW = Math.round(imgRect.width);
+        const lockedH = Math.round(imgRect.height);
         body.innerHTML = '';
         const canvasWrap = document.createElement('div');
         canvasWrap.className = fullWidth
           ? 'nt-chart-canvas-wrap'
           : 'nt-chart-canvas-wrap nt-chart-canvas-wrap-multi';
+        if (lockedW > 0 && lockedH > 0) {
+          canvasWrap.style.width  = lockedW + 'px';
+          canvasWrap.style.height = lockedH + 'px';
+        }
         const canvas = document.createElement('canvas');
         canvasWrap.appendChild(canvas);
         body.appendChild(canvasWrap);
@@ -622,10 +639,7 @@ function ntRenderDetail(snap) {
   }
 
   if (allImgs.length === 0) {
-    chartArea.innerHTML = `
-      <div class="nt-chart-empty">
-        No snapshot yet —<br>click <b>Refresh + Snap</b> or <b>Snap</b>
-      </div>`;
+    chartArea.innerHTML = `<div class="nt-chart-empty"><div>No snapshot yet</div></div>`;
   } else if (allImgs.length === 1) {
     chartArea.appendChild(makeChartItem(allImgs[0], allImgs[0].key, allImgs[0].label, true));
   } else {
@@ -634,7 +648,7 @@ function ntRenderDetail(snap) {
   }
   detail.appendChild(chartArea);
 
-  // ── Kalshi tiles ─────────────────────────────────────────────────────────
+  // ── Kalshi contracts table ───────────────────────────────────────────────
   const markets = snap.kalshi_markets || [];
   if (markets.length) {
     const sec = document.createElement('div');
@@ -645,28 +659,84 @@ function ntRenderDetail(snap) {
     hdr.textContent = `KALSHI ${modeLbl} CONTRACTS — ${snap.city.toUpperCase()}`;
     sec.appendChild(hdr);
 
-    const tiles = document.createElement('div');
-    tiles.className = 'nt-kalshi-tiles';
-
-    markets.forEach(m => {
-      const pct       = m.last_price_dollars != null ? Math.round(parseFloat(m.last_price_dollars) * 100) : null;
-      const yBid      = _dollarsTocents(m.yes_bid_dollars);
-      const nBid      = _dollarsTocents(m.no_bid_dollars);
-      const title     = m.yes_sub_title || '—';
-      const isHit     = snap.forecast_val != null && ntContractHits(m, snap.forecast_val);
-      const pctColor  = pct != null ? (pct >= 50 ? 'var(--warning)' : 'var(--accent)') : 'var(--muted)';
-
-      const tile = document.createElement('div');
-      tile.className = 'nt-tile' + (isHit ? ' nt-tile-hit' : '');
-      tile.innerHTML = `
-        <div class="nt-tile-range">${title}${isHit ? ' ★' : ''}</div>
-        <div class="nt-tile-pct" style="color:${pctColor}">${pct != null ? pct + '%' : '—'}</div>
-        <div class="nt-tile-bids">Y ${yBid} · N ${nBid}</div>
-      `;
-      tiles.appendChild(tile);
+    // Sort by % chance descending to match the live panel default
+    const sorted = markets.slice().sort((a, b) => {
+      const ap = parseFloat(a.last_price_dollars) || 0;
+      const bp = parseFloat(b.last_price_dollars) || 0;
+      return bp - ap;
     });
 
-    sec.appendChild(tiles);
+    const scrollWrap = document.createElement('div');
+    scrollWrap.className = 'kalshi-table-scroll';
+
+    const table = document.createElement('div');
+    table.className = 'kalshi-table';
+
+    const hdrRow = document.createElement('div');
+    hdrRow.className = 'kalshi-row header';
+    ['Range', '% Chance', 'Yes ¢', 'No ¢', 'Volume', 'OI', 'Closes'].forEach(h => {
+      const c = document.createElement('div');
+      c.className = 'kalshi-cell header';
+      c.textContent = h;
+      hdrRow.appendChild(c);
+    });
+    table.appendChild(hdrRow);
+
+    // Star the contract matching the day's most extreme value so far.
+    // Prefer wethr observations (live METAR/SPECI) over NWS obs, and the
+    // latest NWS forecast version (purple line) over the static forecast_val.
+    // Whichever side is more extreme wins.
+    const wethrExtreme = isHigh ? snap.wethr_stats?.max_temp : snap.wethr_stats?.min_temp;
+    const obsExtreme   = wethrExtreme != null
+                           ? wethrExtreme
+                           : (isHigh ? snap.obs_stats?.max_temp : snap.obs_stats?.min_temp);
+
+    let latestFcExtreme = null;
+    const vbd = snap.nws_versions || {};
+    const dateKeys = Object.keys(vbd).sort();
+    if (dateKeys.length) {
+      const versions = vbd[dateKeys[dateKeys.length - 1]] || [];
+      const latest = versions[versions.length - 1];
+      if (latest && latest.temps?.length) {
+        const temps = latest.temps.filter(v => v != null);
+        if (temps.length) latestFcExtreme = isHigh ? Math.max(...temps) : Math.min(...temps);
+      }
+    }
+    const fcExtreme = latestFcExtreme != null ? latestFcExtreme : snap.forecast_val;
+
+    let effectiveVal = null;
+    if (obsExtreme != null && fcExtreme != null) {
+      effectiveVal = isHigh ? Math.max(obsExtreme, fcExtreme) : Math.min(obsExtreme, fcExtreme);
+    } else {
+      effectiveVal = obsExtreme != null ? obsExtreme : fcExtreme;
+    }
+
+    sorted.forEach(m => {
+      const isHit  = effectiveVal != null && ntContractHits(m, effectiveVal);
+      const pct_str = m.last_price_dollars
+        ? Math.round(parseFloat(m.last_price_dollars) * 100) + '%'
+        : '—';
+      const row = document.createElement('div');
+      row.className = 'kalshi-row' + (isHit ? ' hit' : '');
+      [
+        { text: (m.yes_sub_title || '—') + (isHit ? ' ★' : ''), cls: 'label' + (isHit ? ' hit' : '') },
+        { text: pct_str,                                  cls: '' },
+        { text: _dollarsTocents(m.yes_bid_dollars),       cls: 'yes' },
+        { text: _dollarsTocents(m.no_bid_dollars),        cls: 'no' },
+        { text: _fmt_volume(m.volume_fp),                 cls: 'vol' },
+        { text: _fmt_volume(m.open_interest_fp),          cls: 'vol' },
+        { text: _fmt_close_time(m.close_time),            cls: '' },
+      ].forEach(col => {
+        const c = document.createElement('div');
+        c.className = 'kalshi-cell ' + col.cls;
+        c.textContent = col.text;
+        row.appendChild(c);
+      });
+      table.appendChild(row);
+    });
+
+    scrollWrap.appendChild(table);
+    sec.appendChild(scrollWrap);
     detail.appendChild(sec);
   }
 
@@ -738,8 +808,7 @@ async function ntDeleteSnap(id) {
     ntSelectSnap(NS.selectedId);
   } else {
     _destroySnapCharts();
-    $('nt-detail').innerHTML = `
-      <div class="nt-detail-empty">No snapshot yet —<br>click <b>Refresh + Snap</b> or <b>Snap</b></div>`;
+    $('nt-detail').innerHTML = `<div class="nt-detail-empty"><div>No snapshot yet</div></div>`;
   }
   ntUpdateFooter();
 }
